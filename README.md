@@ -8,7 +8,7 @@ Control the Anova Nano via BLE.
 
 This is a rough translation of [dengelke/node-sous-vide](https://github.com/dengelke/node-sous-vide/).
 
-Notes:
+### Notes:
 - The code should be considered experimental at this point.
 - Presumably this library is not compatible with any other Anova model!
 - The PyAnova class is not compatible with [c3V6a2Vy/pyanova](https://github.com/c3V6a2Vy/pyanova).
@@ -16,6 +16,8 @@ Notes:
 # Examples
 
 ### Automatic discovery
+
+The device should be found automatically based on the service uuid it provides.
 
 #### Context manager: auto connect and disconnect
 
@@ -38,21 +40,23 @@ import asyncio
 from pyanova_nano import PyAnova
 
 
-async def stop_anova():
+async def get_unit():
     client = PyAnova()
     await client.connect()
 
     print(await client.get_timer())
-    await asyncio.sleep(0.5)
-    print(await client.get_unit())
 
     await client.disconnect()
 
 
-asyncio.run(stop_anova())
+asyncio.run(get_unit())
 ```
 
 ### Manual connection
+
+To use a custom address, first discover all relevant devices, then use `PyAnova.connect(device=my_anova)` with 
+`my_anova` being the `bleak.BLEDevice` you want to connect to.
+
 ```python
 import asyncio
 
@@ -64,11 +68,12 @@ from pyanova_nano import PyAnova
 async def print_target_temp():
     client = PyAnova()
     devices: list[BLEDevice] = await client.discover(connect=False, list_all=True)
-    device = next(iter(devices))
+    # Select the device to use.
+    my_anova = next(iter(devices))
 
-    print(f"Found: {device.address}")
+    print(f"Found: {my_anova.address}")
 
-    await client.connect(device)
+    await client.connect(device=my_anova)
 
     temperature = await client.get_target_temperature()
     print(temperature)
@@ -77,7 +82,6 @@ async def print_target_temp():
 
 
 asyncio.run(print_target_temp())
-
 ```
 
 # Disclaimer
