@@ -13,6 +13,12 @@ This is a rough translation of [dengelke/node-sous-vide](https://github.com/deng
 - Presumably this library is not compatible with any other Anova model!
 - The PyAnova class is not compatible with [c3V6a2Vy/pyanova](https://github.com/c3V6a2Vy/pyanova).
 
+# Installation
+
+```shell
+pip install pyanova-nano
+```
+
 # Examples
 
 ### Automatic discovery
