@@ -108,6 +108,8 @@ class PyAnova:
         await self._client.disconnect()
 
     async def _connect(self, device):
+        if self.is_connected():
+            return
         _LOGGER.info("Found device: %s", device.address)
         self._device = device
         self._client = BleakClient(address_or_ble_device=device)
