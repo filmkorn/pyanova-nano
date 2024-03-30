@@ -128,8 +128,8 @@ class PyAnova:
         self,
         connect: bool = False,
         list_all: bool = False,
-        use_bdaddr=False,
-        timeout_seconds=5,
+        use_bdaddr: bool = False,
+        timeout_seconds: int = 5,
     ) -> List[BLEDevice]:
         """Find a device that provides the service id.
 
