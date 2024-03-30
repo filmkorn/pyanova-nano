@@ -56,6 +56,7 @@ class PyAnova:
         self,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         device: Optional[BLEDevice] = None,
+        auto_reconnect: bool = True,
     ):
         self._loop = loop or asyncio.get_running_loop()
         assert self._loop, "Must create an event loop first."
@@ -66,6 +67,8 @@ class PyAnova:
 
         self._connected = self._loop.create_future()
         self._scanning = asyncio.Event()
+
+        self._auto_reconnect = auto_reconnect
 
     @property
     def client(self) -> BleakClient:
@@ -187,8 +190,9 @@ class PyAnova:
         """Handle the device disconnecting from this client."""
         self._client = None
         _LOGGER.warning("Anova device disconnected. Trying to reconnect...")
-        # TODO: Add retrys.
-        await self.connect(self._device)
+        # Reconnect.
+        if self._auto_reconnect:
+            await self.connect(self._device)
 
     async def send_read_command(self, command: ReadCommands) -> MessageTypes:
         """Request data from the device."""
