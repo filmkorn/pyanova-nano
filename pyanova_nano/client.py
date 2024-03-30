@@ -18,8 +18,8 @@ from pyanova_nano.commands import create_command_array
 from pyanova_nano.proto.messages_pb2 import IntegerValue
 from pyanova_nano.proto.messages_pb2 import SensorValue
 from pyanova_nano.proto.messages_pb2 import UnitType
-from pyanova_nano.types import MessageTypes
 from pyanova_nano.types import Commands
+from pyanova_nano.types import MessageTypes
 from pyanova_nano.types import ReadCommands
 from pyanova_nano.types import SensorValues
 from pyanova_nano.types import WriteCommands
