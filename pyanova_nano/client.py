@@ -1,5 +1,8 @@
 import asyncio
+from asyncio import Future
+from contextlib import suppress
 import logging
+from typing import Callable
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -57,6 +60,7 @@ class PyAnova:
         loop: Optional[asyncio.AbstractEventLoop] = None,
         device: Optional[BLEDevice] = None,
         auto_reconnect: bool = True,
+        poll_interval: int = 30,
     ):
         self._loop = loop or asyncio.get_running_loop()
         assert self._loop, "Must create an event loop first."
@@ -70,6 +74,14 @@ class PyAnova:
 
         self._auto_reconnect = auto_reconnect
 
+        # Polling
+        self._last_status: Optional[SensorValues] = None
+        self._poll_interval = poll_interval
+        self._callbacks: List[Callable] = []
+        self._stop = False
+        self._is_started = False
+        self._task: Optional[Future] = None
+
     @property
     def client(self) -> BleakClient:
         """Return the BleakClient instance.
@@ -78,6 +90,11 @@ class PyAnova:
 
         """
         return self._client
+
+    @property
+    def last_status(self) -> SensorValues:
+        """Return the last polled sensor values."""
+        return self._last_status
 
     def is_connected(self) -> bool:
         """Return True if connected to the BLE device."""
@@ -103,8 +120,7 @@ class PyAnova:
 
     async def disconnect(self):
         _LOGGER.info(f"Disconnecting from device: %s", self._client.address)
-        # async with self._client as client:
-        #     await client.stop_notify(self.CHARACTERISTICS_READ)
+
         await self._client.disconnect()
 
     async def _connect(self, device):
@@ -284,6 +300,62 @@ class PyAnova:
 
         return message
 
+    def subscribe(self, callback: Callable[[], None]) -> Callable[[], None]:
+        """Subscribe to device notifications.
+
+        Returns:
+             Callable to unsubscribe.
+
+        """
+        self._callbacks.append(callback)
+
+        def _unsub() -> None:
+            """Unsubscribe from device notifications."""
+            self._callbacks.remove(callback)
+
+        return _unsub
+
+    def _fire_callbacks(self):
+        """Execute all callbacks."""
+        # Catch errors to not have one callback stop another from being executed.
+        for callback in self._callbacks:
+            try:
+                callback()
+            except Exception as e:
+                _LOGGER.exception(e)
+
+    async def _poll(self):
+        """Repeatedly poll the device status and fire callbacks."""
+        while self.is_connected():
+            await self.get_sensor_values()
+            self._fire_callbacks()
+
+            await asyncio.sleep(self._poll_interval)
+
+    def start_poll(self):
+        """Start polling the device for updates.
+
+        The status will be accessible on ``self.last_status`` once polled.
+        Use ``PyAnova.subscribe()`` to get notified.
+
+        """
+        if not self._is_started:
+            self._is_started = True
+            self._task = asyncio.ensure_future(self._poll())
+
+    async def stop_poll(self):
+        """Stop polling the device for updates."""
+        if self._is_started:
+            self._is_started = False
+            # Stop task and await it stopped:
+            self._task.cancel()
+            with suppress(asyncio.CancelledError):
+                await self._task
+
+    def set_poll_interval(self, interval: int):
+        """Set the poll interval in seconds."""
+        self._poll_interval = interval
+
     @staticmethod
     def _get_unit_and_factor(unit: int) -> Tuple[str, int]:
         """Convert the unit into a readable format."""
@@ -347,12 +419,14 @@ class PyAnova:
             motor_speed=motor_speed.value,
         )
 
+        self._last_status = sensor_values
+
         return sensor_values
 
     async def get_status(self) -> str:
         """Return the current device status (either stopped or running)."""
-        values = await self.get_sensor_values()
-        return "stopped" if values.motor_speed == 0 else "running"
+        self._last_status = await self.get_sensor_values()
+        return "stopped" if self._last_status.motor_speed == 0 else "running"
 
     async def get_current_temperature(self) -> float:
         """Return the current temperature."""
