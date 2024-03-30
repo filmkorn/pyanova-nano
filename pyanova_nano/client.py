@@ -88,10 +88,13 @@ class PyAnova:
                 discover the device.
 
         """
-        if not device:
+        if device:
+            self._device = device
+
+        if not self._device:
             await self.discover(connect=True, list_all=False)
         else:
-            await self._connect(device)
+            await self._connect(self._device)
 
         await self._connected
 
