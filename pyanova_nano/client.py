@@ -113,7 +113,8 @@ class PyAnova:
         _LOGGER.info("Found device: %s", device.address)
         self._device = device
         self._client = BleakClient(address_or_ble_device=device)
-        await asyncio.wait_for(self._client.connect(), timeout=10)
+        if not self._client.is_connected:
+            await asyncio.wait_for(self._client.connect(), timeout=10)
         self._connected.set_result(True)
 
     async def __aenter__(self):
