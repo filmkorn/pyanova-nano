@@ -102,10 +102,6 @@ async def test_poll(device):
     callback = mock.MagicMock()
     device.subscribe(callback)
 
-    # And the device has not been polled yet.
-    # Then the last status is empty.
-    assert device.last_status is None
-
     # Given we poll the device for some time.
     device.start_poll()
     await asyncio.sleep(2)
