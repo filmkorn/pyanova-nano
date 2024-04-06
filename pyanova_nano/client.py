@@ -72,6 +72,8 @@ class PyAnova:
         self._connected = self._loop.create_future()
         self._scanning = asyncio.Event()
 
+        self._connect_lock = asyncio.Lock()
+
         self._auto_reconnect = auto_reconnect
 
         # Polling
@@ -124,14 +126,22 @@ class PyAnova:
         await self._client.disconnect()
 
     async def _connect(self, device):
-        if self.is_connected():
-            return
-        self._device = device
-        if not self._client or self._client.address != device.address:
-            _LOGGER.debug("Found device: %s", device.address)
-            self._client = BleakClient(address_or_ble_device=device)
-        if not self._client.is_connected:
-            await asyncio.wait_for(self._client.connect(), timeout=10)
+        async with self._connect_lock:
+            if self.is_connected():
+                return
+            self._device = device
+            if not self._client or self._client.address != device.address:
+                try:
+                    self._client = BleakClient(address_or_ble_device=device)
+                except Exception as e:
+                    self._connected.set_exception(e)
+
+            if not self._client.is_connected:
+                try:
+                    await self._client.connect()
+                except TimeoutError as e:
+                    self._connected.set_exception(e)
+
         self._connected.set_result(True)
 
     async def __aenter__(self):
@@ -199,6 +209,11 @@ class PyAnova:
         # Stop scanning.
         self._scanning.clear()
         await self._connect(device)
+        if not self._connect_lock.locked():
+            # Stop the scan.
+            self._scanning.clear()
+            # await self._connect(device)
+            self._device = device
 
     @staticmethod
     async def _on_discover_log(
