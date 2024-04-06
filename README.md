@@ -90,6 +90,43 @@ async def print_target_temp():
 asyncio.run(print_target_temp())
 ```
 
+# Subscription to status updates
+
+The Anova Nano deos not update the client on it's own. We have to ask it for updates.
+This library allows you to poll the device for updates and subscribe to be notified.
+
+```python
+import asyncio
+
+from pyanova_nano import PyAnova
+
+
+async def main():
+    async with PyAnova() as client:
+
+        def handle_update():
+            print(client.last_status)
+
+        client.set_poll_interval(4)
+        client.subscribe(handle_update)
+        client.start_poll()
+
+        # We should get 3 updates in 10 seconds before stopping the polling.
+        await asyncio.sleep(10)
+        await client.stop_poll()
+
+
+asyncio.run(main())
+```
+
+# Troubleshooting
+
+## Cannot connect to your Anova Nano.
+
+1. The Anova Nano can only maintain a connection to a single client. Ensure that nothing else is connected to your Anova
+Nano.
+2. Try turning the device off and on by holding the start/stop button.
+
 # Disclaimer
 
 This software may harm your device. Use it at your own risk.
