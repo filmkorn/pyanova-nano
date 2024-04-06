@@ -11,5 +11,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ``PyAnova.connect()``: Use device provided to `PyAnova.__init__()` and skip discovery.
 
 ## [0.1.0] - 2024-01-21
-### Initital release
+### Initial release
 - Control and query the Anova Nano via BLE.
