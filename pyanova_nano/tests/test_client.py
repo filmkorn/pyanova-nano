@@ -6,11 +6,16 @@ TODO: Mock the device.
 """
 
 import asyncio
+import logging
+from unittest import mock
 
 import pytest
 import pytest_asyncio
 
 from pyanova_nano.client import PyAnova
+
+logging.basicConfig(level=logging.DEBUG)
+
 
 @pytest_asyncio.fixture(scope="session")
 async def device(event_loop):
@@ -21,7 +26,15 @@ async def device(event_loop):
 @pytest.mark.asyncio
 async def test_connect_again(device: PyAnova):
     """Ensure nothing bad happens when we try to connect twice to the device."""
+    # Given the client is connected
+    client = device.client
+    assert client.is_connected
+
+    # When we try to connect again.
     await device.connect()
+
+    # Then the BleakClient remains the same.
+    assert device.client is client
 
 @pytest.mark.asyncio
 async def test_get_status(device: PyAnova):
@@ -86,3 +99,23 @@ async def test_start_stop(device: PyAnova):
     print((await device.get_sensor_values()).motor_speed)
 
     await device.stop()
+
+
+@pytest.mark.asyncio
+async def test_poll(device):
+    """Test subscription to repeated polling."""
+    device.set_poll_interval(1)
+
+    # Given a callable is subscribed to device updates.
+    callback = mock.MagicMock()
+    device.subscribe(callback)
+
+    # Given we poll the device for some time.
+    device.start_poll()
+    await asyncio.sleep(2)
+    device.stop_poll()
+
+    # Then the callable has been called.
+    assert len(callback.mock_calls) > 1
+    # And a device status is accessible.
+    assert device.last_status is not None

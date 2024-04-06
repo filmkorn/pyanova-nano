@@ -1,5 +1,8 @@
 import asyncio
+from asyncio import Future
+from contextlib import suppress
 import logging
+from typing import Callable
 from typing import List
 from typing import Optional
 from typing import Tuple
@@ -57,6 +60,7 @@ class PyAnova:
         loop: Optional[asyncio.AbstractEventLoop] = None,
         device: Optional[BLEDevice] = None,
         auto_reconnect: bool = True,
+        poll_interval: int = 30,
     ):
         self._loop = loop or asyncio.get_running_loop()
         assert self._loop, "Must create an event loop first."
@@ -68,7 +72,17 @@ class PyAnova:
         self._connected = self._loop.create_future()
         self._scanning = asyncio.Event()
 
+        self._connect_lock = asyncio.Lock()
+
         self._auto_reconnect = auto_reconnect
+
+        # Polling
+        self._last_status: Optional[SensorValues] = None
+        self._poll_interval = poll_interval
+        self._callbacks: List[Callable] = []
+        self._stop = False
+        self._is_started = False
+        self._task: Optional[Future] = None
 
     @property
     def client(self) -> BleakClient:
@@ -79,47 +93,73 @@ class PyAnova:
         """
         return self._client
 
+    @property
+    def last_status(self) -> SensorValues:
+        """Return the last polled sensor values."""
+        return self._last_status
+
     def is_connected(self) -> bool:
         """Return True if connected to the BLE device."""
-        return self._client is not None
+        return self._client is not None and self._client.is_connected
 
-    async def connect(self, device: Optional[BLEDevice] = None):
+    async def connect(
+        self, device: Optional[BLEDevice] = None, timeout_seconds: int = 60
+    ):
         """Connect to a device.
 
         Args:
             device: If given, connect to this device. If not given, the client will
                 discover the device.
+            timeout_seconds: Time out discovery attempt after this many seconds.
 
         """
         if device:
             self._device = device
 
         if not self._device:
-            await self.discover(connect=True, list_all=False)
+            _LOGGER.debug("Starting discovery...")
+            await self.discover(
+                connect=True, list_all=False, timeout_seconds=timeout_seconds
+            )
         else:
             await self._connect(self._device)
 
         await self._connected
 
+        if exception := self._connected.exception():
+            raise exception
+
     async def disconnect(self):
         _LOGGER.info(f"Disconnecting from device: %s", self._client.address)
-        # async with self._client as client:
-        #     await client.stop_notify(self.CHARACTERISTICS_READ)
+
         await self._client.disconnect()
 
     async def _connect(self, device):
-        if self.is_connected():
-            return
-        _LOGGER.info("Found device: %s", device.address)
-        self._device = device
-        self._client = BleakClient(address_or_ble_device=device)
-        if not self._client.is_connected:
-            await asyncio.wait_for(self._client.connect(), timeout=10)
+        async with self._connect_lock:
+            if self.is_connected():
+                return
+            self._device = device
+            if not self._client or self._client.address != device.address:
+                try:
+                    self._client = BleakClient(address_or_ble_device=device)
+                except Exception as e:
+                    self._connected.set_exception(e)
+
+            if not self._client.is_connected:
+                try:
+                    await self._client.connect()
+                except TimeoutError as e:
+                    self._connected.set_exception(e)
+
         self._connected.set_result(True)
 
     async def __aenter__(self):
+        print("__aenter__")
+        _LOGGER.debug("Context manager enter...")
         await self.connect()
-        await self._connected
+
+        if exception := self._connected.exception():
+            raise exception
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -139,7 +179,7 @@ class PyAnova:
 
         """
         detection_callback = (
-            self._on_discovery_connect if connect else self._on_discover_log
+            self._on_discovery_set_device if connect else self._on_discover_log
         )
 
         self._scanner = scanner = BleakScanner(
@@ -164,8 +204,11 @@ class PyAnova:
 
         await scanner.stop()
 
-        if not list_all and connect and not self.is_connected():
-            raise RuntimeError("Could not connect to your Anova Nano.")
+        if not list_all and connect and not self._device:
+            raise RuntimeError("Could not discover your Anova Nano.")
+
+        if self._device and connect:
+            await self._connect(self._device)
 
         # Filter by service uuid as bleak returns everything it found.
         devices = [
@@ -175,19 +218,31 @@ class PyAnova:
         ]
         return devices
 
-    async def _on_discovery_connect(
+    async def _on_discovery_set_device(
         self, device: BLEDevice, advertisement_data: AdvertisementData
     ):
         """Connect on discovery."""
         # Stop scanning.
-        self._scanning.clear()
-        await self._connect(device)
+        if (
+            not device.name == "Nano"
+            and self.SERVICE_UUID not in advertisement_data.service_uuids
+        ):
+            # On linux the callback is fired for every device, so we have to filter.
+            return
+
+        _LOGGER.info("Found device: %s - name: (%s)", device.address, device.name)
+
+        if not self._connect_lock.locked():
+            # Stop the scan.
+            self._scanning.clear()
+            # await self._connect(device)
+            self._device = device
 
     @staticmethod
     async def _on_discover_log(
         device: BLEDevice, advertisement_data: AdvertisementData
     ):
-        _LOGGER.info("Found device: %s", device)
+        _LOGGER.info("Found device: %s (%s)", device, device.name)
 
     async def _on_disconnect(self):
         """Handle the device disconnecting from this client."""
@@ -225,8 +280,6 @@ class PyAnova:
         handler = command_config.get("handler")
 
         data = self._loop.create_future()
-
-        await self._connected
 
         async def get_data():
             """Request the data from the device."""
@@ -283,6 +336,62 @@ class PyAnova:
             raise
 
         return message
+
+    def subscribe(self, callback: Callable[[], None]) -> Callable[[], None]:
+        """Subscribe to device notifications.
+
+        Returns:
+             Callable to unsubscribe.
+
+        """
+        self._callbacks.append(callback)
+
+        def _unsub() -> None:
+            """Unsubscribe from device notifications."""
+            self._callbacks.remove(callback)
+
+        return _unsub
+
+    def _fire_callbacks(self):
+        """Execute all callbacks."""
+        # Catch errors to not have one callback stop another from being executed.
+        for callback in self._callbacks:
+            try:
+                callback()
+            except Exception as e:
+                _LOGGER.exception(e)
+
+    async def _poll(self):
+        """Repeatedly poll the device status and fire callbacks."""
+        while self.is_connected():
+            await self.get_sensor_values()
+            self._fire_callbacks()
+
+            await asyncio.sleep(self._poll_interval)
+
+    def start_poll(self):
+        """Start polling the device for updates.
+
+        The status will be accessible on ``self.last_status`` once polled.
+        Use ``PyAnova.subscribe()`` to get notified.
+
+        """
+        if not self._is_started:
+            self._is_started = True
+            self._task = asyncio.ensure_future(self._poll())
+
+    async def stop_poll(self):
+        """Stop polling the device for updates."""
+        if self._is_started:
+            self._is_started = False
+            # Stop task and await it stopped:
+            self._task.cancel()
+            with suppress(asyncio.CancelledError):
+                await self._task
+
+    def set_poll_interval(self, interval: int):
+        """Set the poll interval in seconds."""
+        self._poll_interval = interval
 
     @staticmethod
     def _get_unit_and_factor(unit: int) -> Tuple[str, int]:
@@ -347,12 +456,14 @@ class PyAnova:
             motor_speed=motor_speed.value,
         )
 
+        self._last_status = sensor_values
+
         return sensor_values
 
     async def get_status(self) -> str:
         """Return the current device status (either stopped or running)."""
-        values = await self.get_sensor_values()
-        return "stopped" if values.motor_speed == 0 else "running"
+        self._last_status = await self.get_sensor_values()
+        return "stopped" if self._last_status.motor_speed == 0 else "running"
 
     async def get_current_temperature(self) -> float:
         """Return the current temperature."""
