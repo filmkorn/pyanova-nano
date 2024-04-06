@@ -19,6 +19,11 @@ async def device(event_loop):
 
 
 @pytest.mark.asyncio
+async def test_connect_again(device: PyAnova):
+    """Ensure nothing bad happens when we try to connect twice to the device."""
+    await device.connect()
+
+@pytest.mark.asyncio
 async def test_get_status(device: PyAnova):
     sensors = await device.get_sensor_values()
 

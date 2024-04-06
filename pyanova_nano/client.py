@@ -18,8 +18,8 @@ from pyanova_nano.commands import create_command_array
 from pyanova_nano.proto.messages_pb2 import IntegerValue
 from pyanova_nano.proto.messages_pb2 import SensorValue
 from pyanova_nano.proto.messages_pb2 import UnitType
-from pyanova_nano.types import MessageTypes
 from pyanova_nano.types import Commands
+from pyanova_nano.types import MessageTypes
 from pyanova_nano.types import ReadCommands
 from pyanova_nano.types import SensorValues
 from pyanova_nano.types import WriteCommands
@@ -56,6 +56,7 @@ class PyAnova:
         self,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         device: Optional[BLEDevice] = None,
+        auto_reconnect: bool = True,
     ):
         self._loop = loop or asyncio.get_running_loop()
         assert self._loop, "Must create an event loop first."
@@ -66,6 +67,8 @@ class PyAnova:
 
         self._connected = self._loop.create_future()
         self._scanning = asyncio.Event()
+
+        self._auto_reconnect = auto_reconnect
 
     @property
     def client(self) -> BleakClient:
@@ -105,10 +108,13 @@ class PyAnova:
         await self._client.disconnect()
 
     async def _connect(self, device):
+        if self.is_connected():
+            return
         _LOGGER.info("Found device: %s", device.address)
         self._device = device
         self._client = BleakClient(address_or_ble_device=device)
-        await self._client.connect()
+        if not self._client.is_connected:
+            await asyncio.wait_for(self._client.connect(), timeout=10)
         self._connected.set_result(True)
 
     async def __aenter__(self):
@@ -123,8 +129,8 @@ class PyAnova:
         self,
         connect: bool = False,
         list_all: bool = False,
-        use_bdaddr=False,
-        timeout_seconds=5,
+        use_bdaddr: bool = False,
+        timeout_seconds: int = 5,
     ) -> List[BLEDevice]:
         """Find a device that provides the service id.
 
@@ -187,8 +193,9 @@ class PyAnova:
         """Handle the device disconnecting from this client."""
         self._client = None
         _LOGGER.warning("Anova device disconnected. Trying to reconnect...")
-        # TODO: Add retrys.
-        await self.connect(self._device)
+        # Reconnect.
+        if self._auto_reconnect:
+            await self.connect(self._device)
 
     async def send_read_command(self, command: ReadCommands) -> MessageTypes:
         """Request data from the device."""
