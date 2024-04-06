@@ -102,7 +102,9 @@ class PyAnova:
         """Return True if connected to the BLE device."""
         return self._client is not None
 
-    async def connect(self, device: Optional[BLEDevice] = None):
+    async def connect(
+        self, device: Optional[BLEDevice] = None, timeout_seconds: int = 60
+    ):
         """Connect to a device.
 
         Args:
@@ -114,7 +116,10 @@ class PyAnova:
             self._device = device
 
         if not self._device:
-            await self.discover(connect=True, list_all=False)
+            _LOGGER.debug("Starting discovery...")
+            await self.discover(
+                connect=True, list_all=False, timeout_seconds=timeout_seconds
+            )
         else:
             await self._connect(self._device)
 
@@ -145,8 +150,12 @@ class PyAnova:
         self._connected.set_result(True)
 
     async def __aenter__(self):
+        print("__aenter__")
+        _LOGGER.debug("Context manager enter...")
         await self.connect()
-        await self._connected
+
+        if exception := self._connected.exception():
+            raise exception
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -166,7 +175,7 @@ class PyAnova:
 
         """
         detection_callback = (
-            self._on_discovery_connect if connect else self._on_discover_log
+            self._on_discovery_set_device if connect else self._on_discover_log
         )
 
         self._scanner = scanner = BleakScanner(
@@ -191,8 +200,11 @@ class PyAnova:
 
         await scanner.stop()
 
-        if not list_all and connect and not self.is_connected():
-            raise RuntimeError("Could not connect to your Anova Nano.")
+        if not list_all and connect and not self._device:
+            raise RuntimeError("Could not discover your Anova Nano.")
+
+        if self._device and connect:
+            await self._connect(self._device)
 
         # Filter by service uuid as bleak returns everything it found.
         devices = [
@@ -202,13 +214,20 @@ class PyAnova:
         ]
         return devices
 
-    async def _on_discovery_connect(
+    async def _on_discovery_set_device(
         self, device: BLEDevice, advertisement_data: AdvertisementData
     ):
         """Connect on discovery."""
         # Stop scanning.
-        self._scanning.clear()
-        await self._connect(device)
+        if (
+            not device.name == "Nano"
+            and self.SERVICE_UUID not in advertisement_data.service_uuids
+        ):
+            # On linux the callback is fired for every device, so we have to filter.
+            return
+
+        _LOGGER.info("Found device: %s - name: (%s)", device.address, device.name)
+
         if not self._connect_lock.locked():
             # Stop the scan.
             self._scanning.clear()
@@ -219,7 +238,7 @@ class PyAnova:
     async def _on_discover_log(
         device: BLEDevice, advertisement_data: AdvertisementData
     ):
-        _LOGGER.info("Found device: %s", device)
+        _LOGGER.info("Found device: %s (%s)", device, device.name)
 
     async def _on_disconnect(self):
         """Handle the device disconnecting from this client."""
@@ -257,8 +276,6 @@ class PyAnova:
         handler = command_config.get("handler")
 
         data = self._loop.create_future()
-
-        await self._connected
 
         async def get_data():
             """Request the data from the device."""
