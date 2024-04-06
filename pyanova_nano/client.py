@@ -100,7 +100,7 @@ class PyAnova:
 
     def is_connected(self) -> bool:
         """Return True if connected to the BLE device."""
-        return self._client is not None
+        return self._client is not None and self._client.is_connected
 
     async def connect(
         self, device: Optional[BLEDevice] = None, timeout_seconds: int = 60
@@ -110,6 +110,7 @@ class PyAnova:
         Args:
             device: If given, connect to this device. If not given, the client will
                 discover the device.
+            timeout_seconds: Time out discovery attempt after this many seconds.
 
         """
         if device:
@@ -124,6 +125,9 @@ class PyAnova:
             await self._connect(self._device)
 
         await self._connected
+
+        if exception := self._connected.exception():
+            raise exception
 
     async def disconnect(self):
         _LOGGER.info(f"Disconnecting from device: %s", self._client.address)
