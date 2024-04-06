@@ -126,9 +126,10 @@ class PyAnova:
     async def _connect(self, device):
         if self.is_connected():
             return
-        _LOGGER.info("Found device: %s", device.address)
         self._device = device
-        self._client = BleakClient(address_or_ble_device=device)
+        if not self._client or self._client.address != device.address:
+            _LOGGER.debug("Found device: %s", device.address)
+            self._client = BleakClient(address_or_ble_device=device)
         if not self._client.is_connected:
             await asyncio.wait_for(self._client.connect(), timeout=10)
         self._connected.set_result(True)

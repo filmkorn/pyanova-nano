@@ -26,7 +26,15 @@ async def device(event_loop):
 @pytest.mark.asyncio
 async def test_connect_again(device: PyAnova):
     """Ensure nothing bad happens when we try to connect twice to the device."""
+    # Given the client is connected
+    client = device.client
+    assert client.is_connected
+
+    # When we try to connect again.
     await device.connect()
+
+    # Then the BleakClient remains the same.
+    assert device.client is client
 
 @pytest.mark.asyncio
 async def test_get_status(device: PyAnova):
