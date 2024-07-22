@@ -69,6 +69,7 @@ async def test_get_set_unit(device: PyAnova):
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip("Don't test on an actual live device.")  # TODO: Mock device!
 async def test_get_set_timer(device: PyAnova):
     """Timer can be read and set."""
     await device.set_timer(42)
@@ -77,6 +78,7 @@ async def test_get_set_timer(device: PyAnova):
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip("Don't test on an actual live device.")  # TODO: Mock device!
 async def test_get_set_water_temperature(device: PyAnova):
     current_temp = await device.get_target_temperature()
 
