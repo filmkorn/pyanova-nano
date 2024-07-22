@@ -122,7 +122,7 @@ class PyAnova:
                 connect=True, list_all=False, timeout_seconds=timeout_seconds
             )
         else:
-            await self._connect(self._device)
+            await self._connect(self._device, timeout_seconds=timeout_seconds)
 
         await self._connected
 
@@ -134,14 +134,22 @@ class PyAnova:
 
         await self._client.disconnect()
 
-    async def _connect(self, device):
+    async def _connect(self, device, timeout_seconds: int = 10):
         async with self._connect_lock:
             if self.is_connected():
+                self._connected.set_result(True)
                 return
             self._device = device
-            if not self._client or self._client.address != device.address:
+            if (
+                not self._client
+                or self._client.address != device.address
+                # Avoid re-using the same BleakClient - according to home assistant docs.
+                or not self._client.is_connected
+            ):
                 try:
-                    self._client = BleakClient(address_or_ble_device=device)
+                    self._client = BleakClient(
+                        address_or_ble_device=device, timeout=timeout_seconds
+                    )
                 except Exception as e:
                     self._connected.set_exception(e)
 
@@ -150,8 +158,8 @@ class PyAnova:
                     await self._client.connect()
                 except TimeoutError as e:
                     self._connected.set_exception(e)
-
-        self._connected.set_result(True)
+                else:
+                    self._connected.set_result(True)
 
     async def __aenter__(self):
         print("__aenter__")
