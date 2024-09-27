@@ -16,10 +16,15 @@ from pyanova_nano.client import PyAnova
 
 logging.basicConfig(level=logging.DEBUG)
 
+_DEVICE = None
 
-@pytest_asyncio.fixture(scope="session")
-async def device(event_loop):
-    async with PyAnova() as device:
+@pytest_asyncio.fixture()
+async def device():
+    loop = asyncio.get_running_loop()
+    global _DEVICE
+
+    async with PyAnova(loop, device=_DEVICE) as device:
+        _DEVICE = device.ble_device
         yield device
 
 
