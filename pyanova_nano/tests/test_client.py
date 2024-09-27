@@ -115,7 +115,7 @@ async def test_poll(device):
     # Given we poll the device for some time.
     device.start_poll()
     await asyncio.sleep(2)
-    device.stop_poll()
+    await device.stop_poll()
 
     # Then the callable has been called.
     assert len(callback.mock_calls) > 1

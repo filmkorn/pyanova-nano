@@ -77,11 +77,11 @@ class PyAnova:
         self._auto_reconnect = auto_reconnect
 
         # Polling
-        self._last_status: Optional[SensorValues] = None
+        self._last_sensor_values: Optional[SensorValues] = None
         self._poll_interval = poll_interval
         self._callbacks: List[Callable] = []
         self._stop = False
-        self._is_started = False
+        self._is_poll_started = False
         self._task: Optional[Future] = None
 
     @property
@@ -94,9 +94,14 @@ class PyAnova:
         return self._client
 
     @property
+    def ble_device(self) -> BLEDevice:
+        """The BLEDevice."""
+        return self._device
+
+    @property
     def last_status(self) -> SensorValues:
         """Return the last polled sensor values."""
-        return self._last_status
+        return self._last_sensor_values
 
     def is_connected(self) -> bool:
         """Return True if connected to the BLE device."""
@@ -113,11 +118,12 @@ class PyAnova:
             timeout_seconds: Time out discovery attempt after this many seconds.
 
         """
+        _LOGGER.info("Connecting...")
         if device:
             self._device = device
 
         if not self._device:
-            _LOGGER.debug("Starting discovery...")
+            _LOGGER.info("No device specified. Starting discovery...")
             await self.discover(
                 connect=True, list_all=False, timeout_seconds=timeout_seconds
             )
@@ -136,7 +142,7 @@ class PyAnova:
 
     async def _connect(self, device, timeout_seconds: int = 10):
         async with self._connect_lock:
-            if self.is_connected():
+            if self.is_connected() and not self._connected.result():
                 self._connected.set_result(True)
                 return
             self._device = device
@@ -162,8 +168,6 @@ class PyAnova:
                     self._connected.set_result(True)
 
     async def __aenter__(self):
-        print("__aenter__")
-        _LOGGER.debug("Context manager enter...")
         await self.connect()
 
         if exception := self._connected.exception():
@@ -236,6 +240,7 @@ class PyAnova:
             and self.SERVICE_UUID not in advertisement_data.service_uuids
         ):
             # On linux the callback is fired for every device, so we have to filter.
+            _LOGGER.warning("Skipping unknown device: %s", device.name)
             return
 
         _LOGGER.info("Found device: %s - name: (%s)", device.address, device.name)
@@ -384,14 +389,14 @@ class PyAnova:
         Use ``PyAnova.subscribe()`` to get notified.
 
         """
-        if not self._is_started:
-            self._is_started = True
+        if not self._is_poll_started:
+            self._is_poll_started = True
             self._task = asyncio.ensure_future(self._poll())
 
     async def stop_poll(self):
         """Stop polling the device for updates."""
-        if self._is_started:
-            self._is_started = False
+        if self._is_poll_started:
+            self._is_poll_started = False
             # Stop task and await it stopped:
             self._task.cancel()
             with suppress(asyncio.CancelledError):
@@ -464,14 +469,15 @@ class PyAnova:
             motor_speed=motor_speed.value,
         )
 
-        self._last_status = sensor_values
+        self._last_sensor_values = sensor_values
 
         return sensor_values
 
     async def get_status(self) -> str:
         """Return the current device status (either stopped or running)."""
-        self._last_status = await self.get_sensor_values()
-        return "stopped" if self._last_status.motor_speed == 0 else "running"
+        self._last_status = await self.send_read_command(ReadCommands.Status)
+        print(self._last_status)
+        return "stopped" if self._last_sensor_values.motor_speed == 0 else "running"
 
     async def get_current_temperature(self) -> float:
         """Return the current temperature."""
@@ -516,4 +522,9 @@ class PyAnova:
         """Set the units to either C or F."""
         value = IntegerValue()
         value.value = UnitType.DEGREES_C if unit.lower() == "c" else UnitType.DEGREES_F
-        return await self.send_write_command(WriteCommands.SetUnit, value)
+        result = await self.send_write_command(WriteCommands.SetUnit, value)
+        await asyncio.sleep(0.1)
+        return result
+
+    async def get_device_info(self):
+        return await self.send_read_command(ReadCommands.GetDeviceInfo)
