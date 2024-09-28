@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.0] - 2024-XX-X
 ### Changed
-- Improved connection logic
+- Reduce timeouts and allow to override them.
+- Improve thread safety while sending read commands and waiting for response.
+- Add ``PyAnova.get_device_info()`` which always returns `3`.
+- Implement subscription to polled sensor status updates.
+- Improved connection logic.
 - ``PyAnova.connect()``: Use device provided to `PyAnova.__init__()` and skip discovery.
 
 ## [0.1.0] - 2024-01-21
