@@ -78,6 +78,7 @@ class PyAnova:
         self._scanning = asyncio.Event()
 
         self._connect_lock = asyncio.Lock()
+        self._command_lock = asyncio.Lock()
 
         self._auto_reconnect = auto_reconnect
 
@@ -338,16 +339,21 @@ class PyAnova:
                 self.CHARACTERISTICS_WRITE, bytes(command_array), response=True
             )
 
+        await self._command_lock.acquire()
         await get_data()
 
         # Stopping to listen to the characteristics fails on windows.
         # await self._client.stop_notify(self.CHARACTERISTICS_READ)
 
         if not handler:
+            self._command_lock.release()
             return
 
-        async with asyncio.timeout(3):
-            await data
+        try:
+            async with asyncio.timeout(self._RX_DATA_TIMEOUT_SEC):
+                await data
+        finally:
+            self._command_lock.release()
 
         try:
             message = handler.FromString(bytes(data.result()))
