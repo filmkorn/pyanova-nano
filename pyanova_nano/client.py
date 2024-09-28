@@ -74,7 +74,6 @@ class PyAnova:
         self._client: Optional[BleakClient] = None
 
         self._discover_timeout: int = discover_timeout
-        self._connected = self._loop.create_future()
         self._scanning = asyncio.Event()
 
         self._connect_lock = asyncio.Lock()
@@ -141,11 +140,6 @@ class PyAnova:
         else:
             await self._connect(self._device, timeout_seconds=timeout_seconds)
 
-        await self._connected
-
-        if exception := self._connected.exception():
-            raise exception
-
     async def disconnect(self):
         _LOGGER.info(f"Disconnecting from device: %s", self._client.address)
 
@@ -158,8 +152,7 @@ class PyAnova:
             return
 
         async with self._connect_lock:
-            if self.is_connected() and not self._connected.result():
-                self._connected.set_result(True)
+            if self.is_connected():
                 return
 
             self._device = device
@@ -174,18 +167,10 @@ class PyAnova:
                 )
 
             if not self._client.is_connected:
-                try:
-                    await self._client.connect()
-                except TimeoutError as e:
-                    self._connected.set_exception(e)
-                else:
-                    self._connected.set_result(True)
+                await self._client.connect()
 
     async def __aenter__(self):
         await self.connect()
-
-        if exception := self._connected.exception():
-            raise exception
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
