@@ -126,6 +126,9 @@ class PyAnova:
             timeout_seconds: Time out connection attempt after this many seconds.
 
         """
+        if self.is_connected():
+            return
+
         _LOGGER.debug("Connecting...")
         if device:
             self._device = device
@@ -151,10 +154,14 @@ class PyAnova:
     async def _connect(self, device, timeout_seconds: int | None = None):
         timeout_seconds = timeout_seconds or self._CONNECT_TIMEOUT_SEC
 
+        if self.is_connected():
+            return
+
         async with self._connect_lock:
             if self.is_connected() and not self._connected.result():
                 self._connected.set_result(True)
                 return
+
             self._device = device
             if (
                 not self._client
@@ -162,12 +169,9 @@ class PyAnova:
                 # Avoid re-using the same BleakClient - according to home assistant docs.
                 or not self._client.is_connected
             ):
-                try:
-                    self._client = BleakClient(
-                        address_or_ble_device=device, timeout=timeout_seconds
-                    )
-                except Exception as e:
-                    self._connected.set_exception(e)
+                self._client = BleakClient(
+                    address_or_ble_device=device, timeout=timeout_seconds
+                )
 
             if not self._client.is_connected:
                 try:
