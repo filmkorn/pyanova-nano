@@ -114,7 +114,9 @@ class PyAnova:
         return self._client is not None and self._client.is_connected
 
     async def connect(
-        self, device: Optional[BLEDevice] = None, timeout_seconds: int| None = None,
+        self,
+        device: Optional[BLEDevice] = None,
+        timeout_seconds: int | None = None,
     ):
         """Connect to a device.
 
@@ -124,8 +126,6 @@ class PyAnova:
             timeout_seconds: Time out connection attempt after this many seconds.
 
         """
-        timeout_seconds = timeout_seconds or self._CONNECT_TIMEOUT_SEC
-
         _LOGGER.debug("Connecting...")
         if device:
             self._device = device
@@ -148,7 +148,9 @@ class PyAnova:
 
         await self._client.disconnect()
 
-    async def _connect(self, device, timeout_seconds):
+    async def _connect(self, device, timeout_seconds: int | None = None):
+        timeout_seconds = timeout_seconds or self._CONNECT_TIMEOUT_SEC
+
         async with self._connect_lock:
             if self.is_connected() and not self._connected.result():
                 self._connected.set_result(True)
@@ -229,7 +231,7 @@ class PyAnova:
             raise RuntimeError("Could not discover your Anova Nano.")
 
         if self._device and connect:
-            await self._connect(self._device)
+            await self._connect(self._device, timeout_seconds=self._CONNECT_TIMEOUT_SEC)
 
         # Filter by service uuid as bleak returns everything it found.
         devices = [
