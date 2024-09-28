@@ -63,7 +63,6 @@ class PyAnova:
         loop: Optional[asyncio.AbstractEventLoop] = None,
         device: Optional[BLEDevice] = None,
         auto_reconnect: bool = True,
-        poll_interval: int = 30,
         discover_timeout: int = 10,
     ):
         self._loop = loop or asyncio.get_running_loop()
@@ -83,7 +82,7 @@ class PyAnova:
 
         # Polling
         self._last_sensor_values: Optional[SensorValues] = None
-        self._poll_interval = poll_interval
+        self._poll_interval: int = 30
         self._callbacks: List[Callable] = []
         self._stop = False
         self._is_poll_started = False
@@ -386,13 +385,19 @@ class PyAnova:
 
             await asyncio.sleep(self._poll_interval)
 
-    def start_poll(self):
+    def start_poll(self, poll_interval: int | None = None):
         """Start polling the device for updates.
 
         The status will be accessible on ``self.last_status`` once polled.
         Use ``PyAnova.subscribe()`` to get notified.
 
+        Args:
+            poll_interval: Interval in seconds.
+
         """
+        if poll_interval:
+            self.set_poll_interval(poll_interval)
+
         if not self._is_poll_started:
             self._is_poll_started = True
             self._task = asyncio.ensure_future(self._poll())
