@@ -55,12 +55,16 @@ class PyAnova:
     CHARACTERISTICS_READ = "0e140002-0af1-4582-a242-773e63054c68"
     CHARACTERISTICS_ASYNC = "0e140003-0af1-4582-a242-773e63054c68"
 
+    _CONNECT_TIMEOUT_SEC = 5
+    _RX_DATA_TIMEOUT_SEC = 3
+
     def __init__(
         self,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         device: Optional[BLEDevice] = None,
         auto_reconnect: bool = True,
         poll_interval: int = 30,
+        discover_timeout: int = 10,
     ):
         self._loop = loop or asyncio.get_running_loop()
         assert self._loop, "Must create an event loop first."
@@ -69,6 +73,7 @@ class PyAnova:
         self._device: Optional[BLEDevice] = device
         self._client: Optional[BleakClient] = None
 
+        self._discover_timeout: int = discover_timeout
         self._connected = self._loop.create_future()
         self._scanning = asyncio.Event()
 
@@ -108,24 +113,26 @@ class PyAnova:
         return self._client is not None and self._client.is_connected
 
     async def connect(
-        self, device: Optional[BLEDevice] = None, timeout_seconds: int = 60
+        self, device: Optional[BLEDevice] = None, timeout_seconds: int| None = None,
     ):
         """Connect to a device.
 
         Args:
             device: If given, connect to this device. If not given, the client will
                 discover the device.
-            timeout_seconds: Time out discovery attempt after this many seconds.
+            timeout_seconds: Time out connection attempt after this many seconds.
 
         """
-        _LOGGER.info("Connecting...")
+        timeout_seconds = timeout_seconds or self._CONNECT_TIMEOUT_SEC
+
+        _LOGGER.debug("Connecting...")
         if device:
             self._device = device
 
         if not self._device:
             _LOGGER.info("No device specified. Starting discovery...")
             await self.discover(
-                connect=True, list_all=False, timeout_seconds=timeout_seconds
+                connect=True, list_all=False, timeout_seconds=self._discover_timeout
             )
         else:
             await self._connect(self._device, timeout_seconds=timeout_seconds)
@@ -140,7 +147,7 @@ class PyAnova:
 
         await self._client.disconnect()
 
-    async def _connect(self, device, timeout_seconds: int = 10):
+    async def _connect(self, device, timeout_seconds):
         async with self._connect_lock:
             if self.is_connected() and not self._connected.result():
                 self._connected.set_result(True)
@@ -182,7 +189,7 @@ class PyAnova:
         connect: bool = False,
         list_all: bool = False,
         use_bdaddr: bool = False,
-        timeout_seconds: int = 5,
+        timeout_seconds: int | None = None,
     ) -> List[BLEDevice]:
         """Find a device that provides the service id.
 
@@ -190,6 +197,7 @@ class PyAnova:
             RuntimeError: If no device was found.
 
         """
+        timeout_seconds = timeout_seconds or self._discover_timeout
         detection_callback = (
             self._on_discovery_set_device if connect else self._on_discover_log
         )
@@ -248,7 +256,6 @@ class PyAnova:
         if not self._connect_lock.locked():
             # Stop the scan.
             self._scanning.clear()
-            # await self._connect(device)
             self._device = device
 
     @staticmethod
