@@ -330,7 +330,11 @@ class PyAnova:
             )
 
         await self._command_lock.acquire()
-        await get_data()
+        try:
+            await get_data()
+        except Exception:
+            self._command_lock.release()
+            raise
 
         # Stopping to listen to the characteristics fails on windows.
         # await self._client.stop_notify(self.CHARACTERISTICS_READ)
