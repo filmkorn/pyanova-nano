@@ -12,6 +12,7 @@ from typing import overload
 from bleak import AdvertisementData
 from bleak import BLEDevice
 from bleak import BleakClient
+from bleak import BleakError
 from bleak import BleakScanner
 from google.protobuf.message import DecodeError
 
@@ -333,9 +334,17 @@ class PyAnova:
 
             # Start listening for answers.
             if handler:
-                await self._client.start_notify(
-                    self.CHARACTERISTICS_READ, on_data_received
-                )
+                try:
+                    await self._client.start_notify(
+                        self.CHARACTERISTICS_READ, on_data_received
+                    )
+                except BleakError as err:
+                    # Subsequent subscription raises a BleakError on the bleak_esphome
+                    # backend.
+                    _LOGGER.debug(
+                        "Failed to subscribe to %s: %s", self.CHARACTERISTICS_READ, err
+                    )
+                    pass
 
             # Request the data.
             await self._client.write_gatt_char(
@@ -348,9 +357,6 @@ class PyAnova:
         except Exception:
             self._command_lock.release()
             raise
-
-        # Stopping to listen to the characteristics fails on windows.
-        # await self._client.stop_notify(self.CHARACTERISTICS_READ)
 
         if not handler:
             self._command_lock.release()
