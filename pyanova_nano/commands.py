@@ -96,6 +96,10 @@ COMMANDS_MAP = {
         "instruction": messages_pb2.ConfigDomainMessageType.GET_TEMP_UNITS,
         "handler": messages_pb2.IntegerValue,
     },
+    ReadCommands.GetDeviceInfo: {
+        "instruction": messages_pb2.ConfigDomainMessageType.GET_DEVICE_INFO,
+        "handler": messages_pb2.IntegerValue,
+    },
     WriteCommands.SetUnit: {
         "instruction": messages_pb2.ConfigDomainMessageType.SET_TEMP_UNITS,
     },

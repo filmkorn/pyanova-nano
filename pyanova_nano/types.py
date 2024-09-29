@@ -17,6 +17,7 @@ class ReadCommands(StrEnum):
     ReadUnit = "READ_UNIT"
     ReadTimer = "READ_TIMER"
     GetFirmwareInfo = "GET_FIRMWARE_INFO"
+    GetDeviceInfo = "GET_DEVICE_INFO"
 
 
 class WriteCommands(StrEnum):

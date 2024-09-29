@@ -16,17 +16,33 @@ from pyanova_nano.client import PyAnova
 
 logging.basicConfig(level=logging.DEBUG)
 
+_CLIENT = None
 
-@pytest_asyncio.fixture(scope="session")
-async def device(event_loop):
-    async with PyAnova() as device:
-        yield device
+
+@pytest_asyncio.fixture()
+async def device():
+    loop = asyncio.get_running_loop()
+    global _CLIENT
+
+    _CLIENT = PyAnova(loop)
+
+    async with _CLIENT:
+        yield _CLIENT
 
 
 @pytest.mark.asyncio
 async def test_connect_again(device: PyAnova):
     """Ensure nothing bad happens when we try to connect twice to the device."""
+    # Given the client is connected
+    client = device.client
+    assert client.is_connected
+
+    # When we try to connect again.
     await device.connect()
+
+    # Then the BleakClient remains the same.
+    assert device.client is client
+
 
 @pytest.mark.asyncio
 async def test_get_status(device: PyAnova):
@@ -61,6 +77,7 @@ async def test_get_set_unit(device: PyAnova):
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip("Don't test on an actual live device.")  # TODO: Mock device!
 async def test_get_set_timer(device: PyAnova):
     """Timer can be read and set."""
     await device.set_timer(42)
@@ -69,6 +86,7 @@ async def test_get_set_timer(device: PyAnova):
 
 
 @pytest.mark.asyncio
+@pytest.mark.skip("Don't test on an actual live device.")  # TODO: Mock device!
 async def test_get_set_water_temperature(device: PyAnova):
     current_temp = await device.get_target_temperature()
 
@@ -105,7 +123,7 @@ async def test_poll(device):
     # Given we poll the device for some time.
     device.start_poll()
     await asyncio.sleep(2)
-    device.stop_poll()
+    await device.stop_poll()
 
     # Then the callable has been called.
     assert len(callback.mock_calls) > 1
