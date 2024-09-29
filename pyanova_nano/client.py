@@ -154,15 +154,11 @@ class PyAnova:
             if self.is_connected():
                 return
 
-            self._device = device
-            if (
-                not self._client
-                or self._client.address != device.address
-                # Avoid re-using the same BleakClient - according to home assistant docs.
-                or not self._client.is_connected
-            ):
+            if not self._client or self._device is not device:
+                self._device = device
+                # Avoid re-using the same BleakClient - according to home assistant docs
                 self._client = BleakClient(
-                    address_or_ble_device=device,
+                    address_or_ble_device=self._device,
                     timeout=timeout_seconds,
                     disconnected_callback=self._on_disconnect,
                 )
