@@ -124,3 +124,14 @@ async def test_poll(device):
     assert len(callback.mock_calls) > 1
     # And a device status is accessible.
     assert device.last_status is not None
+
+
+def test_reconnect(device):
+    """Add test to ensure we can safely disconnect and connect."""
+    # Given the device is connecte.
+    assert device.is_connected()
+
+    device.disconnect()
+    device.connect()
+
+    device.get_status()
