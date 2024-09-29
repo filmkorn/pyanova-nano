@@ -16,10 +16,12 @@ from pyanova_nano.client import PyAnova
 
 logging.basicConfig(level=logging.DEBUG)
 
+pytestmark = pytest.mark.asyncio(loop_scope="module")
+
 _CLIENT = None
 
 
-@pytest_asyncio.fixture()
+@pytest_asyncio.fixture(scope="module", loop_scope="module")
 async def device():
     loop = asyncio.get_running_loop()
     global _CLIENT
@@ -30,7 +32,6 @@ async def device():
         yield _CLIENT
 
 
-@pytest.mark.asyncio
 async def test_connect_again(device: PyAnova):
     """Ensure nothing bad happens when we try to connect twice to the device."""
     # Given the client is connected
@@ -44,7 +45,6 @@ async def test_connect_again(device: PyAnova):
     assert device.client is client
 
 
-@pytest.mark.asyncio
 async def test_get_status(device: PyAnova):
     sensors = await device.get_sensor_values()
 
@@ -62,7 +62,6 @@ async def test_get_status(device: PyAnova):
     assert isinstance(sensors.motor_speed, int)
 
 
-@pytest.mark.asyncio
 async def test_get_set_unit(device: PyAnova):
     """Ensure unit can be read and set."""
     current_unit = await device.get_unit()
@@ -76,7 +75,6 @@ async def test_get_set_unit(device: PyAnova):
     assert (await device.get_unit()) == current_unit
 
 
-@pytest.mark.asyncio
 @pytest.mark.skip("Don't test on an actual live device.")  # TODO: Mock device!
 async def test_get_set_timer(device: PyAnova):
     """Timer can be read and set."""
@@ -85,7 +83,6 @@ async def test_get_set_timer(device: PyAnova):
     assert await device.get_timer() == 42
 
 
-@pytest.mark.asyncio
 @pytest.mark.skip("Don't test on an actual live device.")  # TODO: Mock device!
 async def test_get_set_water_temperature(device: PyAnova):
     current_temp = await device.get_target_temperature()
@@ -96,7 +93,6 @@ async def test_get_set_water_temperature(device: PyAnova):
     await device.set_target_temperature(current_temp)
 
 
-@pytest.mark.asyncio
 @pytest.mark.skip("Don't test on an actual live device.")  # TODO: Mock device!
 async def test_start_stop(device: PyAnova):
     """Start and stop the device."""
@@ -111,7 +107,6 @@ async def test_start_stop(device: PyAnova):
     await device.stop()
 
 
-@pytest.mark.asyncio
 async def test_poll(device):
     """Test subscription to repeated polling."""
     device.set_poll_interval(1)
@@ -129,3 +124,14 @@ async def test_poll(device):
     assert len(callback.mock_calls) > 1
     # And a device status is accessible.
     assert device.last_status is not None
+
+
+def test_reconnect(device):
+    """Add test to ensure we can safely disconnect and connect."""
+    # Given the device is connecte.
+    assert device.is_connected()
+
+    device.disconnect()
+    device.connect()
+
+    device.get_status()

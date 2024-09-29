@@ -12,6 +12,7 @@ from typing import overload
 from bleak import AdvertisementData
 from bleak import BLEDevice
 from bleak import BleakClient
+from bleak import BleakError
 from bleak import BleakScanner
 from google.protobuf.message import DecodeError
 
@@ -139,9 +140,9 @@ class PyAnova:
             await self._connect(self._device, timeout_seconds=timeout_seconds)
 
     async def disconnect(self):
-        _LOGGER.info(f"Disconnecting from device: %s", self._client.address)
-
-        await self._client.disconnect()
+        if self.is_connected():
+            _LOGGER.info(f"Disconnecting from device: %s", self._device.address)
+            await self._client.disconnect()
 
     async def _connect(self, device, timeout_seconds: int | None = None):
         timeout_seconds = timeout_seconds or self._CONNECT_TIMEOUT_SEC
@@ -153,15 +154,11 @@ class PyAnova:
             if self.is_connected():
                 return
 
-            self._device = device
-            if (
-                not self._client
-                or self._client.address != device.address
-                # Avoid re-using the same BleakClient - according to home assistant docs.
-                or not self._client.is_connected
-            ):
+            if not self._client or self._device is not device:
+                self._device = device
+                # Avoid re-using the same BleakClient - according to home assistant docs
                 self._client = BleakClient(
-                    address_or_ble_device=device,
+                    address_or_ble_device=self._device,
                     timeout=timeout_seconds,
                     disconnected_callback=self._on_disconnect,
                 )
@@ -333,9 +330,17 @@ class PyAnova:
 
             # Start listening for answers.
             if handler:
-                await self._client.start_notify(
-                    self.CHARACTERISTICS_READ, on_data_received
-                )
+                try:
+                    await self._client.start_notify(
+                        self.CHARACTERISTICS_READ, on_data_received
+                    )
+                except BleakError as err:
+                    # Subsequent subscription raises a BleakError on the bleak_esphome
+                    # backend.
+                    _LOGGER.debug(
+                        "Failed to subscribe to %s: %s", self.CHARACTERISTICS_READ, err
+                    )
+                    pass
 
             # Request the data.
             await self._client.write_gatt_char(
@@ -348,9 +353,6 @@ class PyAnova:
         except Exception:
             self._command_lock.release()
             raise
-
-        # Stopping to listen to the characteristics fails on windows.
-        # await self._client.stop_notify(self.CHARACTERISTICS_READ)
 
         if not handler:
             self._command_lock.release()
