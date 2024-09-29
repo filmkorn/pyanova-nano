@@ -256,7 +256,7 @@ class PyAnova:
     ):
         _LOGGER.info("Found device: %s (%s)", device, device.name)
 
-    def _on_disconnect(self):
+    def _on_disconnect(self, _: BleakClient):
         """Handle the device disconnecting from this client."""
         self._fire_callbacks(self._callbacks_disconnect)
         self._client = None
