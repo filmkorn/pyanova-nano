@@ -140,9 +140,9 @@ class PyAnova:
             await self._connect(self._device, timeout_seconds=timeout_seconds)
 
     async def disconnect(self):
-        _LOGGER.info(f"Disconnecting from device: %s", self._client.address)
-
-        await self._client.disconnect()
+        if self.is_connected():
+            _LOGGER.info(f"Disconnecting from device: %s", self._device.address)
+            await self._client.disconnect()
 
     async def _connect(self, device, timeout_seconds: int | None = None):
         timeout_seconds = timeout_seconds or self._CONNECT_TIMEOUT_SEC
