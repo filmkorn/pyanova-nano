@@ -62,7 +62,6 @@ class PyAnova:
         self,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         device: Optional[BLEDevice] = None,
-        auto_reconnect: bool = True,
         discover_timeout: int = 10,
     ):
         self._loop = loop or asyncio.get_running_loop()
@@ -78,7 +77,7 @@ class PyAnova:
         self._connect_lock = asyncio.Lock()
         self._command_lock = asyncio.Lock()
 
-        self._auto_reconnect = auto_reconnect
+        self._callbacks_disconnect: List[Callable] = []
 
         # Polling
         self._last_sensor_values: Optional[SensorValues] = None
@@ -162,7 +161,9 @@ class PyAnova:
                 or not self._client.is_connected
             ):
                 self._client = BleakClient(
-                    address_or_ble_device=device, timeout=timeout_seconds
+                    address_or_ble_device=device,
+                    timeout=timeout_seconds,
+                    disconnected_callback=self._on_disconnect,
                 )
 
             if not self._client.is_connected:
@@ -255,13 +256,25 @@ class PyAnova:
     ):
         _LOGGER.info("Found device: %s (%s)", device, device.name)
 
-    async def _on_disconnect(self):
+    def _on_disconnect(self):
         """Handle the device disconnecting from this client."""
+        self._fire_callbacks(self._callbacks_disconnect)
         self._client = None
-        _LOGGER.warning("Anova device disconnected. Trying to reconnect...")
-        # Reconnect.
-        if self._auto_reconnect:
-            await self.connect(self._device)
+
+    def add_on_disconnect(self, callback: Callable[[], None]) -> Callable[[], None]:
+        """Subscribe to device notifications.
+
+        Returns:
+             Callable to unsubscribe.
+
+        """
+        self._callbacks_disconnect.append(callback)
+
+        def _unsub() -> None:
+            """Unsubscribe from device notifications."""
+            self._callbacks_disconnect.remove(callback)
+
+        return _unsub
 
     async def send_read_command(self, command: ReadCommands) -> MessageTypes:
         """Request data from the device."""
@@ -372,10 +385,10 @@ class PyAnova:
 
         return _unsub
 
-    def _fire_callbacks(self):
+    def _fire_callbacks(self, callbacks: List[Callable]):
         """Execute all callbacks."""
         # Catch errors to not have one callback stop another from being executed.
-        for callback in self._callbacks:
+        for callback in callbacks:
             try:
                 callback()
             except Exception as e:
@@ -385,7 +398,7 @@ class PyAnova:
         """Repeatedly poll the device status and fire callbacks."""
         while self.is_connected():
             await self.get_sensor_values()
-            self._fire_callbacks()
+            self._fire_callbacks(self._callbacks)
 
             await asyncio.sleep(self._poll_interval)
 

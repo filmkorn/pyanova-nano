@@ -18,6 +18,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 _CLIENT = None
 
+
 @pytest_asyncio.fixture()
 async def device():
     loop = asyncio.get_running_loop()
@@ -41,6 +42,7 @@ async def test_connect_again(device: PyAnova):
 
     # Then the BleakClient remains the same.
     assert device.client is client
+
 
 @pytest.mark.asyncio
 async def test_get_status(device: PyAnova):
