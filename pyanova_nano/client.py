@@ -14,7 +14,9 @@ from bleak import BLEDevice
 from bleak import BleakClient
 from bleak import BleakError
 from bleak import BleakScanner
-from bleak_retry_connector import establish_connection, BleakClientWithServiceCache
+from bleak_retry_connector import BleakClientWithServiceCache
+from bleak_retry_connector import MAX_CONNECT_ATTEMPTS
+from bleak_retry_connector import establish_connection
 from google.protobuf.message import DecodeError
 
 from pyanova_nano.commands import COMMANDS_MAP
@@ -58,6 +60,7 @@ class PyAnova:
     CHARACTERISTICS_ASYNC = "0e140003-0af1-4582-a242-773e63054c68"
 
     _CONNECT_TIMEOUT_SEC = 10
+    _CONNECT_MAX_ATTEMPTS = MAX_CONNECT_ATTEMPTS
     _READ_DATA_TIMEOUT_SEC = 10
 
     def __init__(
@@ -158,9 +161,13 @@ class PyAnova:
             if not self._client or self._device is not device:
                 self._device = device
                 # Avoid re-using the same BleakClient - according to home assistant docs
-                self._client = BleakClient(
-                    address_or_ble_device=self._device,
-                    timeout=timeout_seconds,
+                self._client = await establish_connection(
+                    client_class=BleakClientWithServiceCache,
+                    device=self.ble_device,
+                    name=self.__class__.__name__,
+                    use_services_cache=True,
+                    ble_device_callback=None,
+                    max_attempts=5,
                     disconnected_callback=self._on_disconnect,
                 )
 
