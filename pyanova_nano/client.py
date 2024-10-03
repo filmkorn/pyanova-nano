@@ -303,6 +303,7 @@ class PyAnova:
         value: Optional[IntegerValue] = None,
     ) -> Union[None, MessageTypes]:
         """Send a command to the device."""
+        _LOGGER.debug("Sending command: %s", str(command))
         command_config = COMMANDS_MAP[command]
         command_instruction = command_config["instruction"]
         command_array = create_command_array(command_instruction, value)
@@ -313,6 +314,7 @@ class PyAnova:
         async def get_data():
             """Request the data from the device."""
             result = bytearray()
+            _LOGGER.debug("Received raw data array: %s", str(result))
 
             def on_data_received(_uuid, raw_data):
                 """Add each chunk of data to the array until the array is full
@@ -351,6 +353,7 @@ class PyAnova:
                     pass
 
             # Request the data.
+            _LOGGER.debug("Sending command array: %s", str(command_array))
             await self._client.write_gatt_char(
                 self.CHARACTERISTICS_WRITE, bytes(command_array), response=True
             )
@@ -372,8 +375,10 @@ class PyAnova:
         finally:
             self._command_lock.release()
 
+        result = self.__future_received.result()
+        _LOGGER.debug("Received data: %s", result)
         try:
-            message = handler.FromString(bytes(data.result()))
+            message = handler.FromString(bytes(result))
         except DecodeError:
             # TODO: Add error handling.
             raise
