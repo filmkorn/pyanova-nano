@@ -82,6 +82,9 @@ class PyAnova:
         self._connect_lock = asyncio.Lock()
         self._command_lock = asyncio.Lock()
 
+        self.__future_received: Future | None = None
+        self.__result_received = bytearray()
+
         self._callbacks_disconnect: List[Callable] = []
 
         # Polling
@@ -173,6 +176,10 @@ class PyAnova:
 
             if not self._client.is_connected:
                 await self._client.connect()
+
+            await self._client.start_notify(
+                self.CHARACTERISTICS_READ, self._on_data_received
+            )
 
     async def __aenter__(self):
         await self.connect()
@@ -297,6 +304,34 @@ class PyAnova:
     async def send_command(self, command: WriteCommands, value: IntegerValue):
         ...
 
+    def _on_data_received(self, _uuid, raw_data):
+        """Add each chunk of data to the array until the array is full
+
+        Keep adding to the result until the converted buffer can be completed
+        with the received data.
+
+        Once the converted buffer is complete, set it as result to the future
+        and mark the future done.
+
+        """
+        _LOGGER.debug("Received raw data array: %s", str(raw_data))
+
+        self.__result_received.extend(raw_data)
+
+        if None in convert_buffer(self.__result_received):
+            _LOGGER.debug(
+                "Buffer not complete yet - waiting for more data: %s",
+                str(self.__result_received),
+            )
+            return
+        elif not self.__future_received.done():
+            # End of data.
+            _LOGGER.debug("Buffer complete: %s", str(self.__result_received))
+            self.__future_received.set_result(convert_buffer(self.__result_received))
+        else:
+            # Buffer was completed - but we received more data.
+            _LOGGER.debug("Unexpected data received: %s", str(raw_data))
+
     async def send_command(
         self,
         command: Commands,
@@ -309,58 +344,16 @@ class PyAnova:
         command_array = create_command_array(command_instruction, value)
         handler = command_config.get("handler")
 
-        data = self._loop.create_future()
+        await self._command_lock.acquire()
+        self.__future_received = self._loop.create_future()
+        self.__result_received = bytearray()
 
-        async def get_data():
-            """Request the data from the device."""
-            result = bytearray()
-            _LOGGER.debug("Received raw data array: %s", str(result))
-
-            def on_data_received(_uuid, raw_data):
-                """Add each chunk of data to the array until the array is full
-
-                Keep adding to the result until the converted buffer can be completed
-                with the received data.
-
-                Once the converted buffer is complete, set it as result to the future
-                and mark the future done.
-
-                """
-                nonlocal result
-
-                result.extend(raw_data)
-
-                if None in convert_buffer(result):
-                    return
-                elif not data.done():
-                    # End of data.
-                    data.set_result(convert_buffer(result))
-                else:
-                    _LOGGER.debug("Unexpected data received: %s", str(raw_data))
-
-            # Start listening for answers.
-            if handler:
-                try:
-                    await self._client.start_notify(
-                        self.CHARACTERISTICS_READ, on_data_received
-                    )
-                except BleakError as err:
-                    # Subsequent subscription raises a BleakError on the bleak_esphome
-                    # backend.
-                    _LOGGER.debug(
-                        "Failed to subscribe to %s: %s", self.CHARACTERISTICS_READ, err
-                    )
-                    pass
-
+        try:
             # Request the data.
             _LOGGER.debug("Sending command array: %s", str(command_array))
             await self._client.write_gatt_char(
                 self.CHARACTERISTICS_WRITE, bytes(command_array), response=True
             )
-
-        await self._command_lock.acquire()
-        try:
-            await get_data()
         except Exception:
             self._command_lock.release()
             raise
@@ -371,7 +364,7 @@ class PyAnova:
 
         try:
             async with asyncio.timeout(self._READ_DATA_TIMEOUT_SEC):
-                await data
+                await self.__future_received
         finally:
             self._command_lock.release()
 
