@@ -14,6 +14,7 @@ from bleak import BLEDevice
 from bleak import BleakClient
 from bleak import BleakError
 from bleak import BleakScanner
+from bleak_retry_connector import establish_connection, BleakClientWithServiceCache
 from google.protobuf.message import DecodeError
 
 from pyanova_nano.commands import COMMANDS_MAP
@@ -57,7 +58,7 @@ class PyAnova:
     CHARACTERISTICS_ASYNC = "0e140003-0af1-4582-a242-773e63054c68"
 
     _CONNECT_TIMEOUT_SEC = 10
-    _RX_DATA_TIMEOUT_SEC = 3
+    _READ_DATA_TIMEOUT_SEC = 10
 
     def __init__(
         self,
@@ -359,7 +360,7 @@ class PyAnova:
             return
 
         try:
-            async with asyncio.timeout(self._RX_DATA_TIMEOUT_SEC):
+            async with asyncio.timeout(self._READ_DATA_TIMEOUT_SEC):
                 await data
         finally:
             self._command_lock.release()
