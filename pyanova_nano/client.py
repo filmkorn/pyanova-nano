@@ -172,6 +172,7 @@ class PyAnova:
                     ble_device_callback=None,
                     max_attempts=5,
                     disconnected_callback=self._on_disconnect,
+                    timeout_seconds=timeout_seconds,
                 )
 
             if not self._client.is_connected:
