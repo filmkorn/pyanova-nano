@@ -1,6 +1,6 @@
 [project]
 name = "pyanova-nano"
-version = "0.2.1"
+version = "0.2.2"
 authors = [
   { name="Mitja Muller-Jend", email="mitja.muller-jend+github@gmail.com" },
 ]
@@ -15,6 +15,7 @@ classifiers = [
 ]
 dependencies = [
     "bleak >= 0.19, < 1",
+    "bleak-retry-connector >= 3.5, < 4",
     "protobuf >= 4, < 5",
 ]
 
