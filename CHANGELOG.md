@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2024-10-03
+- Fix incompatibility with ESPHome Bluetooth Proxies.
+  
+  Subscribe callback only once to 'read' characteristics.
+  Avoid sharing result array and future across subsequent calls.
+  
+- Add debug log statements
+- Retry connection attempt
+
 ## [0.2.1] - 2024-09-29
 ### Changed
 - Fix BleakError raised on subsequent read commands on ``bleak-esphome`` backend.
