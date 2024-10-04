@@ -46,7 +46,7 @@ import asyncio
 from pyanova_nano import PyAnova
 
 
-async def get_unit():
+async def get_timer():
     client = PyAnova()
     await client.connect()
 
@@ -55,7 +55,7 @@ async def get_unit():
     await client.disconnect()
 
 
-asyncio.run(get_unit())
+asyncio.run(get_timer())
 ```
 
 ### Manual connection
