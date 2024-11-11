@@ -25,9 +25,18 @@ test = [
   "pytest",
   "pytest_asyncio",
 ]
+release = [
+  "hatch",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["pyanova_nano"]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "/.github",
+  "/docs",
+]
 
 [project.urls]
 Homepage = "https://github.com/filmkorn/pyanova-nano"
