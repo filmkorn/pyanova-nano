@@ -1,6 +1,6 @@
 [project]
 name = "pyanova-nano"
-version = "0.2.2"
+version = "0.2.3"
 authors = [
   { name="Mitja Muller-Jend", email="mitja.muller-jend+github@gmail.com" },
 ]
@@ -16,7 +16,7 @@ classifiers = [
 dependencies = [
     "bleak >= 0.19, < 1",
     "bleak-retry-connector >= 3.5, < 4",
-    "protobuf >= 4, < 5",
+    "protobuf >= 4, < 6",
 ]
 
 [project.optional-dependencies]
@@ -25,9 +25,18 @@ test = [
   "pytest",
   "pytest_asyncio",
 ]
+release = [
+  "hatch",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["pyanova_nano"]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "/.github",
+  "/docs",
+]
 
 [project.urls]
 Homepage = "https://github.com/filmkorn/pyanova-nano"
@@ -42,3 +51,6 @@ profile = "black"
 force_sort_within_sections = true
 force_single_line = true
 skip = "proto"
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "session"
