@@ -262,12 +262,16 @@ async def test_poll(device):
     assert device.last_status is not None
 
 
-def test_reconnect(device):
+async def test_reconnect(device):
     """Add test to ensure we can safely disconnect and connect."""
     # Given the device is connected.
     assert device.is_connected()
 
-    device.disconnect()
-    device.connect()
+    await device.disconnect()
+    await device.connect()
 
-    device.get_status()
+    await simulate_device_response(
+        device.get_status,
+        device.CHARACTERISTICS_READ,
+        _RESPONSE_SENSOR_VALUES_RUNNING,
+    )
