@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.#] - To be released
 - Fix AttributeError on ``PyAnova.get_status()`` (#17)
+- Mock device in unittests (#2)
 
 ## [0.2.3] - 2024-11-11
 - Update to protobuf-5 (#15)
