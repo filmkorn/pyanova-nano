@@ -508,11 +508,17 @@ class PyAnova:
 
         return sensor_values
 
-    async def get_status(self) -> str:
-        """Return the current device status (either stopped or running)."""
-        self._last_status = await self.send_read_command(ReadCommands.Status)
-        print(self._last_status)
-        return "stopped" if self._last_sensor_values.motor_speed == 0 else "running"
+    async def get_status(self, refresh: bool = True) -> str:
+        """Return the current device status (either stopped or running).
+
+        Args:
+            refresh: If true,
+        """
+        if refresh:
+            await self.get_sensor_values()
+
+        is_running = self.last_status and self.last_status.motor_speed != 0
+        return "running" if is_running else "stopped"
 
     async def get_current_temperature(self) -> float:
         """Return the current temperature."""
