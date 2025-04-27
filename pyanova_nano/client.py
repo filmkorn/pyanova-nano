@@ -110,7 +110,7 @@ class PyAnova:
         return self._device
 
     @property
-    def last_status(self) -> SensorValues:
+    def last_status(self) -> Optional[SensorValues]:
         """Return the last polled sensor values."""
         return self._last_sensor_values
 
