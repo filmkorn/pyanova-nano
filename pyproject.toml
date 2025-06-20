@@ -38,6 +38,10 @@ exclude = [
   "/docs",
 ]
 
+[tool.hatch.envs.hatch-test]
+default-args = ["--pyargs", "pyanova_nano"]
+extra-dependencies = ["pytest", "pytest_asyncio", "pytest_sugar"]
+
 [project.urls]
 Homepage = "https://github.com/filmkorn/pyanova-nano"
 Issues = "https://github.com/filmkorn/pyanova-nano/issues"
