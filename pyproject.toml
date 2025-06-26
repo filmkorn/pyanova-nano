@@ -7,7 +7,7 @@ authors = [
 description = "Python API to interact with the Anova Nano."
 keywords = ["sous-vide", "anova", "nano", "pyanova", "ble", "bluetooth"]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: Apache Software License",
@@ -21,14 +21,33 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["black", "isort"]
-test = [
-  "pytest",
-  "pytest_asyncio",
-]
 release = [
   "hatch",
 ]
 
+# Test
+[tool.hatch.envs.test]
+python = "3.12"
+dependencies = [
+  "pytest",
+  "pytest_cov",
+  "pytest_asyncio",
+  "pytest_sugar",
+]
+[tool.hatch.envs.test.scripts]
+test = "pytest {args}"
+cov-report = [
+  "coverage report",
+]
+cov = [
+  "test",
+  "cov-report",
+]
+
+[[tool.hatch.envs.test.matrix]]
+python = ["3.11", "3.12"]
+
+# Build
 [tool.hatch.build.targets.wheel]
 packages = ["pyanova_nano"]
 
@@ -38,16 +57,12 @@ exclude = [
   "/docs",
 ]
 
-[tool.hatch.envs.hatch-test]
-default-args = ["--pyargs", "pyanova_nano"]
-extra-dependencies = ["pytest", "pytest_asyncio", "pytest_sugar"]
-
 [project.urls]
 Homepage = "https://github.com/filmkorn/pyanova-nano"
 Issues = "https://github.com/filmkorn/pyanova-nano/issues"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.26.1"]
 build-backend = "hatchling.build"
 
 [tool.isort]
