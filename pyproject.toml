@@ -14,8 +14,8 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "bleak >= 0.19, < 1",
-    "bleak-retry-connector >= 3.5, < 4",
+    "bleak >= 0.19, < 2",
+    "bleak-retry-connector >= 3.5, < 5",
     "protobuf >= 4, < 7",
 ]
 
