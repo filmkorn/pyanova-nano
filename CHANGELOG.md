@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.x] - to be released
+## [0.3.0] - 2025-08-22
 - Update to bleak-1 and bleak-retry-connector-4
 - Update to protobuf-6 
 - Update minimum python version to 3.11 to reflect actual compatibility.
