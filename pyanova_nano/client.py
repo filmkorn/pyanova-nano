@@ -353,7 +353,7 @@ class PyAnova:
             # Request the data.
             _LOGGER.debug("Sending command array: %s", str(command_array))
             await self._client.write_gatt_char(
-                self.CHARACTERISTICS_WRITE, bytes(command_array), response=True
+                self.CHARACTERISTICS_WRITE, bytes(command_array), response=False
             )
         except Exception:
             self._command_lock.release()
