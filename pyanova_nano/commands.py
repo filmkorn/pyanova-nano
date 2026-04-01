@@ -102,11 +102,14 @@ COMMANDS_MAP = {
     },
     WriteCommands.SetUnit: {
         "instruction": messages_pb2.ConfigDomainMessageType.SET_TEMP_UNITS,
+        "handler": messages_pb2.IntegerValue,
     },
     WriteCommands.SetTemp: {
-        "instruction": messages_pb2.ConfigDomainMessageType.SET_TEMP_SETPOINT
+        "instruction": messages_pb2.ConfigDomainMessageType.SET_TEMP_SETPOINT,
+        "handler": messages_pb2.IntegerValue,
     },
     WriteCommands.SetTimer: {
-        "instruction": messages_pb2.ConfigDomainMessageType.SET_COOKING_TIMER
+        "instruction": messages_pb2.ConfigDomainMessageType.SET_COOKING_TIMER,
+        "handler": messages_pb2.IntegerValue,
     },
 }

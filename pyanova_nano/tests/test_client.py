@@ -150,7 +150,11 @@ async def test_get_set_unit(device: PyAnova):
 
     # When we set the device to degrees Fahrenheit.
     other_unit = "F"
-    await device.set_unit(other_unit)
+    await simulate_device_response(
+        lambda: device.set_unit(other_unit),
+        device.CHARACTERISTICS_READ,
+        responses=[b"\x01\x03\x07\x08\x01\x00"],
+    )
     # Then the device units are set.
     new_unit = await simulate_device_response(
         device.get_unit,
@@ -160,7 +164,11 @@ async def test_get_set_unit(device: PyAnova):
     assert new_unit == other_unit
 
     # When we set the units back to degrees Celsius.
-    await device.set_unit(current_unit)
+    await simulate_device_response(
+        lambda: device.set_unit(current_unit),
+        device.CHARACTERISTICS_READ,
+        responses=[b"\x01\x03\x07\x08\x01\x00"],
+    )
 
     # Then the device units are set.
     new_unit = await simulate_device_response(
@@ -173,7 +181,11 @@ async def test_get_set_unit(device: PyAnova):
 
 async def test_get_set_timer(device: PyAnova):
     """Timer can be read and set."""
-    await device.set_timer(42)
+    await simulate_device_response(
+        lambda: device.set_timer(42),
+        device.CHARACTERISTICS_READ,
+        responses=[b"\x01\x03\x12\x08\x2a\x00"],
+    )
 
     new_timer = await simulate_device_response(
         device.get_timer,
@@ -191,7 +203,11 @@ async def test_get_set_target_temperature(device: PyAnova):
     )
     assert current_temp == 43.0
 
-    await device.set_target_temperature(42)
+    await simulate_device_response(
+        lambda: device.set_target_temperature(42),
+        device.CHARACTERISTICS_READ,
+        responses=[b"\x01\x05\x03\x08\xa4\x03\x00"],
+    )
 
     current_temp = await simulate_device_response(
         device.get_target_temperature,
@@ -199,7 +215,11 @@ async def test_get_set_target_temperature(device: PyAnova):
         [b"\x01\x05\x04\x08\xa4\x03\x00"],
     )
 
-    await device.set_target_temperature(current_temp)
+    await simulate_device_response(
+        lambda: device.set_target_temperature(current_temp),
+        device.CHARACTERISTICS_READ,
+        responses=[b"\x01\x05\x03\x08\xa4\x03\x00"],
+    )
 
 
 async def test_start_stop(device: PyAnova):
