@@ -1,6 +1,6 @@
 [project]
 name = "pyanova-nano"
-version = "0.3.2"
+version = "0.3.3"
 authors = [
   { name="Mitja Muller-Jend", email="mitja.muller-jend+github@gmail.com" },
 ]
@@ -45,7 +45,7 @@ cov = [
 ]
 
 [[tool.hatch.envs.test.matrix]]
-python = ["3.11", "3.12"]
+python = ["3.11", "3.12", "3.13", "3.14"]
 
 # Build
 [tool.hatch.build.targets.wheel]

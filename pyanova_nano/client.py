@@ -563,9 +563,7 @@ class PyAnova:
         """Set the units to either C or F."""
         value = IntegerValue()
         value.value = UnitType.DEGREES_C if unit.lower() == "c" else UnitType.DEGREES_F
-        result = await self.send_write_command(WriteCommands.SetUnit, value)
-        await asyncio.sleep(0.1)
-        return result
+        return await self.send_write_command(WriteCommands.SetUnit, value)
 
     async def get_device_info(self):
         return await self.send_read_command(ReadCommands.GetDeviceInfo)
