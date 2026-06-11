@@ -25,6 +25,13 @@ release = [
   "hatch",
 ]
 
+[tool.black]
+force-exclude = '''
+/(
+  proto
+)/
+'''
+
 # Test
 [tool.hatch.envs.test]
 python = "3.12"
