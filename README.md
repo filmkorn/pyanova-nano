@@ -3,15 +3,13 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-
-Control the Anova Nano via BLE.
+Control the Anova Nano via Bluetooh Low Energy (BLE).
 
 This is a rough translation of [dengelke/node-sous-vide](https://github.com/dengelke/node-sous-vide/).
 
 ### Notes:
-- The code should be considered experimental at this point.
-- Presumably this library is not compatible with any other Anova model!
-- The PyAnova class is not compatible with [c3V6a2Vy/pyanova](https://github.com/c3V6a2Vy/pyanova).
+- Use at your own risk!
+- The Anova Nano supports only one (active) connection. While connected you cannot use the Anova app at the same time and vice versa.
 
 # Installation
 
@@ -123,7 +121,7 @@ asyncio.run(main())
 
 ## Cannot connect to your Anova Nano.
 
-1. The Anova Nano can only maintain a connection to a single client. Ensure that nothing else is connected to your Anova
+1. The Anova Nano can maintain a connection to a single client only. Ensure that nothing else is connected to your Anova
 Nano.
 2. Try turning the device off and on by holding the start/stop button.
 
