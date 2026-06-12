@@ -298,12 +298,10 @@ class PyAnova:
         return await self.send_command(command=command, value=value)
 
     @overload
-    async def send_command(self, command: ReadCommands) -> MessageTypes:
-        ...
+    async def send_command(self, command: ReadCommands) -> MessageTypes: ...
 
     @overload
-    async def send_command(self, command: WriteCommands, value: IntegerValue):
-        ...
+    async def send_command(self, command: WriteCommands, value: IntegerValue): ...
 
     def _on_data_received(self, _uuid, raw_data):
         """Add each chunk of data to the array until the array is full

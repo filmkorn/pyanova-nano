@@ -1,13 +1,9 @@
-from typing import ClassVar as _ClassVar
-from typing import Iterable as _Iterable
-from typing import Mapping as _Mapping
-from typing import Optional as _Optional
-from typing import Union as _Union
-
-from google.protobuf import descriptor as _descriptor
-from google.protobuf import message as _message
 from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
+from google.protobuf import descriptor as _descriptor
+from google.protobuf import message as _message
+from collections.abc import Iterable as _Iterable, Mapping as _Mapping
+from typing import ClassVar as _ClassVar, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
@@ -70,7 +66,6 @@ class ConfigDomainMessageType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper)
     SYSTEM_ALERT_VECTOR: _ClassVar[ConfigDomainMessageType]
     RESERVED28: _ClassVar[ConfigDomainMessageType]
     MESSAGE_SPOOF: _ClassVar[ConfigDomainMessageType]
-
 ANOVA_DOMAIN_ID_CONFIG: DomainType
 ANOVA_DOMAIN_ID_BULK_TRANSFER: DomainType
 ANOVA_DOMAIN_ID_COUNT: DomainType
@@ -128,12 +123,7 @@ class FirmwareInfo(_message.Message):
     commitId: str
     tagId: str
     dateCode: int
-    def __init__(
-        self,
-        commitId: _Optional[str] = ...,
-        tagId: _Optional[str] = ...,
-        dateCode: _Optional[int] = ...,
-    ) -> None: ...
+    def __init__(self, commitId: _Optional[str] = ..., tagId: _Optional[str] = ..., dateCode: _Optional[int] = ...) -> None: ...
 
 class IntegerValue(_message.Message):
     __slots__ = ("value",)
@@ -149,17 +139,10 @@ class SensorValue(_message.Message):
     value: int
     units: UnitType
     sensorType: SensorType
-    def __init__(
-        self,
-        value: _Optional[int] = ...,
-        units: _Optional[_Union[UnitType, str]] = ...,
-        sensorType: _Optional[_Union[SensorType, str]] = ...,
-    ) -> None: ...
+    def __init__(self, value: _Optional[int] = ..., units: _Optional[_Union[UnitType, str]] = ..., sensorType: _Optional[_Union[SensorType, str]] = ...) -> None: ...
 
 class SensorValueList(_message.Message):
     __slots__ = ("values",)
     VALUES_FIELD_NUMBER: _ClassVar[int]
     values: _containers.RepeatedCompositeFieldContainer[SensorValue]
-    def __init__(
-        self, values: _Optional[_Iterable[_Union[SensorValue, _Mapping]]] = ...
-    ) -> None: ...
+    def __init__(self, values: _Optional[_Iterable[_Union[SensorValue, _Mapping]]] = ...) -> None: ...

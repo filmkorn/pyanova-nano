@@ -1,6 +1,6 @@
 [project]
 name = "pyanova-nano"
-version = "0.3.3"
+version = "0.3.4"
 authors = [
   { name="Mitja Muller-Jend", email="mitja.muller-jend+github@gmail.com" },
 ]
@@ -14,7 +14,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "bleak >= 0.19, < 3",
+    "bleak >= 0.19, < 4",
     "bleak-retry-connector >= 3.5, < 5",
     "protobuf >= 4, < 7",
 ]
@@ -24,6 +24,13 @@ dev = ["black", "isort"]
 release = [
   "hatch",
 ]
+
+[tool.black]
+force-exclude = '''
+/(
+  proto
+)/
+'''
 
 # Test
 [tool.hatch.envs.test]
