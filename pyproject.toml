@@ -16,7 +16,7 @@ classifiers = [
 dependencies = [
     "bleak >= 0.19, < 4",
     "bleak-retry-connector >= 3.5, < 5",
-    "protobuf >= 4, < 7",
+    "protobuf >= 7.35.1, < 8",
 ]
 
 [project.optional-dependencies]
@@ -24,7 +24,7 @@ dev = ["black", "isort"]
 release = [
   "hatch",
 ]
-proto = ["grpcio-tools"]
+proto = ["grpcio-tools == 1.86.0"]
 
 [tool.black]
 force-exclude = '''
