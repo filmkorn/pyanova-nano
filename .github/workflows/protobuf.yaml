@@ -2,7 +2,9 @@ name: Regenerate protobuf stubs
 on:
   workflow_dispatch:
   push:
-    paths: ["pyanova_nano/proto/*.proto"]
+    paths: 
+      - "pyanova_nano/proto/*.proto"
+      - "pyproject.toml"
 
 permissions:
   contents: write
