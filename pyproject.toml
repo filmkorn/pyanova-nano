@@ -24,6 +24,7 @@ dev = ["black", "isort"]
 release = [
   "hatch",
 ]
+proto = ["grpcio-tools"]
 
 [tool.black]
 force-exclude = '''
