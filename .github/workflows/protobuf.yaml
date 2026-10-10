@@ -1,0 +1,35 @@
+name: Regenerate protobuf stubs
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths: 
+      - "pyanova_nano/proto/*.proto"
+      - "pyproject.toml"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  regen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[proto]"
+      - run: >
+          python -m grpc_tools.protoc
+          -I pyanova_nano/proto
+          --python_out=pyanova_nano/proto
+          --pyi_out=pyanova_nano/proto
+          pyanova_nano/proto/*.proto
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "Regenerate protobuf stubs"
+          title: "Regenerate protobuf stubs"
+          branch: chore/regenerate-protobuf-stubs
+          delete-branch: true
